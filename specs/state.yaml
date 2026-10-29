@@ -1,20 +1,20 @@
 workflow_mode: solo-git
 active_flow: null
-active_epic: e08
-active_story: e08s02
+active_epic: null
+active_story: null
 bug_id: null
 handoff:
-  next_skill: verify-work
+  next_skill: survey-context
   context: >-
-    e08s02 CI/CD wired from danielvm-git/.github ci-cd-swift.yml v2.0.0 plus big-release.
-    Next: first CI run on GitHub must be green. Open items: pair the 32" Frame (e01s01),
-    configure SmartThings to verify real power-off (e04s02, e06s01).
+    e08 done: first CI/CD run green (ci, verify, release) and big-release published v0.1.0.
+    Open items: pair the 32" Frame (e01s01), configure SmartThings to verify real
+    power-off (e04s02, e06s01), find the Globoplay app ID.
 metrics:
   story_start: '2026-10-29T15:45:00-03:00'
-  story_end: null
+  story_end: '2026-10-29T18:10:39-03:00'
 release:
-  last_tag: null
-  last_publish: null
+  last_tag: v0.1.0            # mirror of gh release view, not the authority
+  last_publish: '2026-10-29T21:10:39Z'
   target_version: null
 git:
   branch: main
