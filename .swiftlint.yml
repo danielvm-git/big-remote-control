@@ -1,0 +1,53 @@
+# SwiftLint — Preflight lint gate (AGENTS.md § Commands).
+# Every exception below states why it exists (CONVENTIONS.md § Comments: WHY, not WHAT).
+included:
+  - Sources
+  - Tests
+excluded:
+  - build
+  - BigRemote.xcodeproj
+
+disabled_rules:
+  # Trailing commas keep multi-line literal diffs to one line.
+  - trailing_comma
+  # String(decoding:as:) is deliberate: a TV frame with invalid UTF-8 must
+  # degrade to replacement characters, not drop the whole message.
+  - optional_data_string_conversion
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    # Domain words that are clear at the call site.
+    - id
+    - ip
+    - tv
+    - on
+    - up
+    - to
+    - ok
+    - st
+    - fd
+    - sa
+    # Wire-format keys of the Samsung TV and SmartThings APIs (docs/PROTOCOL.md).
+    # Renaming them would need CodingKeys that only restate the JSON.
+    - n
+    - _links
+    - Cmd
+    - DataOfCmd
+    - Option
+    - TypeOfRemote
+    - PowerState
+    - Language
+    - FrameTVSupport
+    - TokenAuthSupport
+    - ImeSyncedSupport
+
+line_length:
+  warning: 160
+  error: 200
+  ignores_comments: true
+
+nesting:
+  # Request DTOs nest their `params` type to mirror the JSON shape.
+  type_level: 2
