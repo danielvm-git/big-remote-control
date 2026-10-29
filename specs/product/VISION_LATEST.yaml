@@ -1,0 +1,14 @@
+version: "1"
+north_star: "Control every Samsung TV at home from the Mac, with no phone and no cloud required."
+problem: |
+  The SmartThings phone app is the only easy way to tweak the TVs (apps, Art Mode,
+  power, picture). When the phone is away or out of battery, the tweaks are out of reach.
+users:
+  - id: owner
+    description: Solo owner of two Samsung The Frame TVs (32" 2023, 43" 2024) on the home LAN.
+success_signals:
+  - Every daily action (keys, apps, Art Mode, power on) works from the Mac menu bar.
+  - A tweak repeated twice becomes a one-click preset.
+non_goals:
+  - Firmware modification, rooting or Developer Mode installs on the TV.
+  - Automating privacy/ad settings through blind key sequences (no screen feedback; Factory Reset is adjacent).

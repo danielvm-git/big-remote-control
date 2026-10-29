@@ -1,0 +1,9 @@
+discover:
+  research_protocol: done        # docs/PROTOCOL.md
+  live_probe_frame43: done       # specs/verifications/VERIFY-2026-10-29-frame43.md
+  live_probe_frame32: todo
+elaborate:
+  scope: done
+  adrs: done
+plan:
+  release_plan: done

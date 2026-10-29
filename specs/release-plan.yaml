@@ -1,0 +1,62 @@
+release:
+  version: null          # mirror only — big-release owns the real version (git tags)
+  codename: Living Room
+  status: in-progress
+  semantic_release: true
+  tool: big-release
+  bump_hint: minor
+build_order:
+  - e01
+  - e02
+  - e03
+  - e04
+  - e07
+  - e05
+  - e06
+  - e08
+epics:
+  - id: e01
+    title: LAN remote control
+    wsjf: 20
+    stories:
+      - {id: e01s01, title: Pair with a TV and persist its token, bcps: 3}
+      - {id: e01s02, title: Send remote keys with pacing, bcps: 2}
+      - {id: e01s03, title: Send text to the focused field, bcps: 2}
+  - id: e02
+    title: App launch
+    wsjf: 18
+    stories:
+      - {id: e02s01, title: Launch apps via REST and resolve installed IDs, bcps: 3}
+  - id: e03
+    title: The Frame Art Mode
+    wsjf: 15
+    stories:
+      - {id: e03s01, title: Art Mode on/off and live status, bcps: 5}
+      - {id: e03s02, title: Art brightness and motion timer, bcps: 2}
+  - id: e04
+    title: Power
+    wsjf: 14
+    stories:
+      - {id: e04s01, title: Power on from standby (KEY_POWER, then WOL), bcps: 3}
+      - {id: e04s02, title: Power off via SmartThings, Art Mode fallback, bcps: 2}
+  - id: e05
+    title: Presets
+    wsjf: 12
+    stories:
+      - {id: e05s01, title: Preset model, runner and editor, bcps: 5}
+  - id: e06
+    title: SmartThings (optional)
+    wsjf: 6
+    stories:
+      - {id: e06s01, title: Token, device mapping, picture/sound/input, bcps: 5}
+  - id: e07
+    title: TV discovery and management
+    wsjf: 10
+    stories:
+      - {id: e07s01, title: Subnet scan, add by IP, REST status polling, bcps: 3}
+  - id: e08
+    title: Repository polish
+    wsjf: 9
+    stories:
+      - {id: e08s01, title: bigpowers conventions, specs and lint gate, bcps: 3}
+      - {id: e08s02, title: CI/CD from the .github template with big-release, bcps: 3}

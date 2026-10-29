@@ -1,0 +1,42 @@
+version: "1"
+core_value: "Direct Mac-to-TV control over the LAN; the phone is never a requirement."
+
+summary: |
+  Native macOS menu bar app for Samsung Tizen TVs (The Frame). LAN-first:
+  WebSocket remote and art channels, REST app launch, Wake-on-LAN.
+  SmartThings cloud is optional and only adds real power-off and picture/sound/input modes.
+
+in_scope:
+  - id: fr-01
+    title: Pair with a TV and send remote keys and text over the LAN
+    epic: e01
+  - id: fr-02
+    title: Launch installed apps (Netflix, YouTube, Prime, Disney+, HBO Max, ...)
+    epic: e02
+  - id: fr-03
+    title: The Frame Art Mode on/off, status and art settings
+    epic: e03
+  - id: fr-04
+    title: Power on from standby and power off (cloud-assisted)
+    epic: e04
+  - id: fr-05
+    title: User-defined presets (sequences of steps) for one-click tweaks
+    epic: e05
+  - id: fr-06
+    title: Optional SmartThings integration (picture, sound, input, real off)
+    epic: e06
+  - id: fr-07
+    title: Discover and manage several TVs on the LAN
+    epic: e07
+  - id: fr-08
+    title: Repository follows bigpowers conventions with CI/CD and automated releases
+    epic: e08
+
+out_of_scope:
+  - Phone-based control or phone as a camera.
+  - Debloating / privacy settings automation (manual checklist only).
+  - Distribution outside the owner's Mac (no notarization, no App Store).
+
+success_criteria:
+  - All fr-01..fr-05 work on the 43" Frame with only the Mac on the LAN (verified 2026-10-29).
+  - Preflight and CI green on main; every push to main is evaluated by big-release.

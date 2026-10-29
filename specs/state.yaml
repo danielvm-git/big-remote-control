@@ -1,0 +1,20 @@
+workflow_mode: solo-git
+active_flow: null
+active_epic: e08
+active_story: e08s02
+bug_id: null
+handoff:
+  next_skill: verify-work
+  context: >-
+    e08s02 CI/CD wired from danielvm-git/.github ci-cd-swift.yml v2.0.0 plus big-release.
+    Next: first CI run on GitHub must be green. Open items: pair the 32" Frame (e01s01),
+    configure SmartThings to verify real power-off (e04s02, e06s01).
+metrics:
+  story_start: '2026-10-29T15:45:00-03:00'
+  story_end: null
+release:
+  last_tag: null
+  last_publish: null
+  target_version: null
+git:
+  branch: main

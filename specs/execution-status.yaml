@@ -1,0 +1,22 @@
+development_status:
+  e01: in-progress     # 32" Frame not paired yet
+  e01s01: in-progress
+  e01s02: done
+  e01s03: review       # built, not live-tested
+  e02: done
+  e02s01: done
+  e03: in-progress
+  e03s01: done
+  e03s02: review
+  e04: in-progress
+  e04s01: done
+  e04s02: review       # needs SmartThings to verify real off
+  e05: review
+  e05s01: review
+  e06: review
+  e06s01: review       # no token configured yet
+  e07: done
+  e07s01: done
+  e08: in-progress
+  e08s01: done
+  e08s02: in-progress

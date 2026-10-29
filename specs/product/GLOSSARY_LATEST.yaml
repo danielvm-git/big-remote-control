@@ -1,0 +1,19 @@
+version: "1"
+terms:
+  - term: The Frame
+    definition: Samsung lifestyle TV that shows artwork when "off" (Art Mode).
+  - term: Art Mode
+    definition: Frame state that shows art. Reported by REST as PowerState "on".
+  - term: Standby
+    definition: TV screen off but network alive. REST reports PowerState "standby".
+  - term: Remote channel
+    definition: "wss://<ip>:8002/api/v2/channels/samsung.remote.control — keys, text, pairing."
+  - term: Art channel
+    definition: "wss://<ip>:8002/api/v2/channels/com.samsung.art-app — Art Mode requests."
+  - term: Pairing token
+    definition: Per-TV token the TV issues after the user accepts the on-screen prompt.
+  - term: Preset
+    definition: Named sequence of steps (key, delay, app, art, power, text, SmartThings).
+  - term: Wake-on-LAN (WOL)
+    definition: UDP magic packet that wakes a TV whose network stack is asleep.
+    note: "The TV setting \"Ligar com celular\" only allows WOL; no phone is involved."
