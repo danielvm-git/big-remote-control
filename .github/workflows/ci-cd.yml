@@ -1,0 +1,90 @@
+name: CI/CD
+# story: e08s02
+# Based on danielvm-git/.github workflow-templates/ci-cd-swift.yml v2.0.0
+# + the release job pattern of danielvm-git/big-release .github/workflows/release.yml.
+# Deviations are recorded in specs/adr/0004-ci-cd-template-and-big-release.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pipeline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BIG_RELEASE_VERSION: '2.5.0'
+  BIG_RELEASE_SHA256: '99fc0fc613938f926b5c744f93fffdd49e0c7a6238961b78593e9103eb221c7a'
+
+jobs:
+  ci:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          swift --version
+
+      - name: Install tools
+        run: brew install xcodegen swiftlint
+
+      # --- Xcode app target variant of the template ---
+      - name: Preflight (lint, generate, build, test)
+        run: bash scripts/preflight.sh
+
+  verify:
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preflight (portable checks)
+        run: bash scripts/preflight.sh
+
+      - name: Check Conventional Commits and no AI agent attribution
+        run: bash scripts/check-conventional-commits.sh
+
+  release:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [ci, verify]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install big-release
+        run: |
+          URL="https://github.com/danielvm-git/big-release/releases/download/${BIG_RELEASE_VERSION}/big-release-linux-amd64"
+          curl -fsSL "$URL" -o big-release
+          echo "${BIG_RELEASE_SHA256}  big-release" | sha256sum -c -
+          chmod +x big-release
+          sudo mv big-release /usr/local/bin/big-release
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run big-release
+        run: big-release release --verbose
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,16 @@
+# big-release — https://github.com/danielvm-git/big-release
+# story: e08s02
+# The git tag is the version authority (CONVENTIONS.md § The version is never hand-tracked).
+branches:
+  # big-release 2.5.0 needs the object form; its README's "- main" string form fails to parse.
+  - name: main
+
+tagFormat: "v${version}"
+
+plugins:
+  - changelog   # writes CHANGELOG.md
+  - git         # commits CHANGELOG.md as "chore(release): X [skip ci]" and pushes the tag
+  - github      # creates the GitHub release with the generated notes
+
+# No package publisher: Big Remote is a macOS app, not an SPM package
+# (the swift publisher only activates when Package.swift exists).
