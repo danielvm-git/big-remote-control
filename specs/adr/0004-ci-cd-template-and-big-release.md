@@ -21,5 +21,8 @@ v2.0.0) and `danielvm-git/big-release` for versioning.
 
 ## Consequences
 
+- big-release is pinned to 2.5.1, which accepts `branches: - main`
+  (danielvm-git/big-release#73, found here on 2.5.0).
+- The template's `--oneline` check was fixed upstream in danielvm-git/.github#39 (templates 4.2.1).
 - Version authority is the git tag; `CHANGELOG.md` is committed by big-release (`[skip ci]`).
 - No `.app` asset is attached yet (unsigned, owner-only). Revisit with notarization.
