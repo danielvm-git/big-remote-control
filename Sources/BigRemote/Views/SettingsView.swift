@@ -8,6 +8,7 @@ struct SettingsView: View {
             AppsSettingsView().tabItem { Label("Apps", systemImage: "square.grid.2x2") }
             PresetEditorView().tabItem { Label("Presets", systemImage: "sparkles") }
             SmartThingsSettingsView().tabItem { Label("SmartThings", systemImage: "cloud") }
+            DiagnosticsSettingsView().tabItem { Label("Diagnóstico", systemImage: "stethoscope") }
         }
     }
 }
@@ -120,7 +121,10 @@ struct TVDetailView: View {
                 if let mac = tv.mac, WakeOnLANPacket.parseMAC(mac) == nil {
                     Text("MAC inválido").font(.caption).foregroundStyle(.red)
                 }
-                Toggle("The Frame (Modo Arte)", isOn: $tv.isFrame)
+                LabeledContent("Marca", value: tv.vendor.label)
+                if tv.vendor == .samsung {
+                    Toggle("The Frame (Modo Arte)", isOn: $tv.isFrame)
+                }
             }
             Section("Estado") {
                 LabeledContent("Energia", value: status.power.label)
@@ -133,16 +137,20 @@ struct TVDetailView: View {
                 }
                 if let art = status.artAPIVersion { LabeledContent("API Modo Arte", value: art) }
             }
-            Section("Pareamento") {
-                Text(model.hasToken(tv)
-                    ? "Token salvo. Os comandos não pedem confirmação na TV."
-                    : "Ainda não pareada. Na primeira conexão a TV mostra um aviso: aceite com o controle físico.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                HStack {
-                    Button("Parear agora") { model.pair(tv) }
-                    Button("Esquecer pareamento") { model.forgetPairing(tv) }
-                        .disabled(!model.hasToken(tv))
+            if tv.vendor == .sony {
+                SonyPairingSection(tv: tv)
+            } else {
+                Section("Pareamento") {
+                    Text(model.hasToken(tv)
+                        ? "Token salvo. Os comandos não pedem confirmação na TV."
+                        : "Ainda não pareada. Na primeira conexão a TV mostra um aviso: aceite com o controle físico.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack {
+                        Button("Parear agora") { model.pair(tv) }
+                        Button("Esquecer pareamento") { model.forgetPairing(tv) }
+                            .disabled(!model.hasToken(tv))
+                    }
                 }
             }
             Section {

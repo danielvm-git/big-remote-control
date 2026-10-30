@@ -28,10 +28,17 @@ struct RemotePayloadTests {
 
     @Test func channelURLEncodesNameAndToken() throws {
         let url = try #require(RemotePayloads.channelURL(ip: "192.168.1.20", channel: .remote, token: "12345678"))
-        #expect(url.absoluteString == "wss://192.168.1.20:8002/api/v2/channels/samsung.remote.control?name=QmlnIFJlbW90ZQ%3D%3D&token=12345678")
+        let name = RemotePayloads.encodedName(RemotePayloads.clientName)
+        #expect(url.absoluteString == "wss://192.168.1.20:8002/api/v2/channels/samsung.remote.control?name=\(name)&token=12345678")
         let art = try #require(RemotePayloads.channelURL(ip: "192.168.1.21", channel: .art, token: nil))
-        #expect(art.absoluteString == "wss://192.168.1.21:8002/api/v2/channels/com.samsung.art-app?name=QmlnIFJlbW90ZQ%3D%3D")
+        #expect(art.absoluteString == "wss://192.168.1.21:8002/api/v2/channels/com.samsung.art-app?name=\(name)")
         #expect(RemotePayloads.channelURL(ip: "not-an-ip", channel: .remote, token: nil) == nil)
+    }
+
+    /// Mac and iPhone must not share a name: the TV binds the token to it (ADR 0008).
+    @Test func clientNameIsPerPlatform() {
+        #expect(RemotePayloads.clientName == "Big Remote (Mac)")
+        #expect(RemotePayloads.encodedName("Big Remote (Mac)") == "QmlnIFJlbW90ZSAoTWFjKQ%3D%3D")
     }
 
     @Test func percentEncodesPlusAndSlash() {

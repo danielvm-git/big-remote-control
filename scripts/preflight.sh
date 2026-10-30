@@ -65,6 +65,9 @@ if [ "$(uname -s)" = "Darwin" ]; then
   run_check "xcodegen" xcodegen generate --quiet
   run_check "build + test" xcodebuild -scheme BigRemote -destination 'platform=macOS' \
     -derivedDataPath build -quiet test
+  # Unsigned device build: catches iOS-only compile errors without a team or simulator.
+  run_check "iOS build" xcodebuild -scheme BigRemoteiOS -destination 'generic/platform=iOS' \
+    -derivedDataPath build -quiet CODE_SIGNING_ALLOWED=NO build
 else
   echo "[SKIP] swiftlint / xcodegen / xcodebuild need macOS (CI ci job runs them)"
 fi

@@ -1,5 +1,4 @@
 // story: e01s02 e01s03 e02s01
-import AppKit
 import Foundation
 
 /// Remote keys, pairing, app launch, text input and favourites.
@@ -20,6 +19,7 @@ extension AppModel {
     }
 
     func pair(_ tv: TVDevice) {
+        Log.info(.pairing, "pair.tapped", tv: tv.id, ["brand": tv.vendor.rawValue, "hadToken": "\(hasToken(tv))"])
         run {
             try await self.client(for: tv).pair()
             self.show("“\(tv.name)” pareada.")
@@ -27,17 +27,20 @@ extension AppModel {
     }
 
     func forgetPairing(_ tv: TVDevice) {
+        Log.info(.pairing, "pair.forget.tapped", tv: tv.id)
         resolvedAppIDs[tv.id] = nil
-        if let client = clients[tv.id] { Task { await client.forgetPairing() } } else { TokenStore().setToken(nil, for: tv.id) }
+        if let client = clients[tv.id] { Task { await client.forgetPairing() } } else { TokenStore().setToken(nil, for: TokenStore.key(for: tv)) }
         show("Pareamento de “\(tv.name)” apagado.")
     }
 
-    func hasToken(_ tv: TVDevice) -> Bool { TokenStore().token(for: tv.id) != nil }
+    func hasToken(_ tv: TVDevice) -> Bool { TokenStore().token(for: TokenStore.key(for: tv)) != nil }
 
     func launch(_ app: TVApp) {
+        Log.info(.command, "app.tapped", tv: selectedTVID, ["name": app.name])
         run {
             let tv = try self.requireTV()
-            let client = try self.client(for: tv)
+            if let named = try self.namedAppClient(for: tv) { return try await named.launchApp(named: app.name) }
+            let client = try self.samsungClient(for: tv)
             let appID = try await self.resolveAppID(app, on: tv)
             try await client.launchApp(appID, type: app.launchType)
         }
@@ -105,6 +108,7 @@ extension AppModel {
     /// Read-only REST probe: is the app installed on the selected TV?
     func probe(_ app: TVApp) async -> String {
         guard let tv = selectedTV else { return "sem TV" }
+        if tv.vendor != .samsung { return await probeByTitle(app, on: tv) }
         for id in [app.appID] + app.alternateIDs {
             do {
                 if let status = try await rest.appStatus(ip: tv.ip, appID: id) {

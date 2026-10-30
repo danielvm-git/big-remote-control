@@ -1,4 +1,4 @@
-# Samsung The Frame: control protocol spec (big-remote-control)
+# Samsung The Frame, Sony BRAVIA and LG webOS: control protocol spec (big-remote-control)
 
 Status: research spec, written 2026-10-29. **Nothing here has been sent to the
 TVs yet.** The only live data is one read-only `GET :8001/api/v2/` on the 32"
@@ -776,6 +776,100 @@ Reset Smart Hub, App Delete, or DNS.
     and which are in `custom.disabledCapabilities`? Picture mode names in pt_BR.
 11. Does `SendInputString` handle pt_BR accents?
 
+## 11. Sony BRAVIA (REST API + IRCC, port 80)
+
+Reference implementation: pybravia 0.5.3 (Home Assistant `braviatv`). Status tags as above.
+
+### 11.1 JSON-RPC envelope [V]
+
+`POST http://<ip>/sony/<service>` with `{"method":"...","params":[...],"id":1,"version":"1.0"}`.
+Reply `{"result":[...],"id":1}` or `{"error":[code,"message"],"id":1}`. Calls that need auth
+answer HTTP 403 with `{"error":[403,"Forbidden"]}`.
+
+### 11.2 Auth: PIN pairing [C]
+
+1. `accessControl/actRegister` with `[{"clientid","nickname","level":"private"},[{"value":"yes","function":"WOL"}]]`
+   and no credentials: the TV shows a 4-digit PIN and answers 401.
+2. The same call with `Authorization: Basic base64(":" + PIN)`: 200 plus `Set-Cookie: auth=...`.
+   The `Expires` attribute is not RFC-compliant, so the cookie is parsed by hand.
+3. Every later call sends `Cookie: auth=...`. On 401/403, repeat step 2 with the saved PIN
+   (it stays valid while the client is in the TV's device list).
+
+Alternative: a pre-shared key (`X-Auth-PSK`) set in the TV menu. Not implemented.
+
+### 11.3 Calls used [C]
+
+| Service | Method | Auth | Use |
+|---|---|---|---|
+| system | getPowerStatus | no [V] | `active` / `standby` (polling) |
+| system | getInterfaceInformation | no [V] | model name, API version |
+| system | getRemoteControllerInfo | no [V] | IRCC name -> code table |
+| avContent | getCurrentExternalInputsStatus | no [V] | inputs (not used yet) |
+| audio | getVolumeInformation | no [V] | volume (not used yet) |
+| system | setPowerStatus `[{"status":bool}]` | yes | real off / on (on needs "Remote start") |
+| appControl | getApplicationList | yes [V: 403 without auth] | titles and URIs |
+| appControl | setActiveApp `[{"uri":...}]` | yes | launch an app |
+| appControl | setTextForm `["text"]` | yes | fill the focused text field |
+
+### 11.4 IRCC keys [C]
+
+`POST /sony/ircc`, `SOAPACTION: "urn:schemas-sony-com:service:IRCC:1#X_SendIRCC"`, SOAP body with
+`<IRCCCode>base64</IRCCCode>`. Codes come from `getRemoteControllerInfo` (names such as `VolumeUp`,
+`Confirm`, `Return`, `Home`, `Input`, `TvPower`, `WakeUp`). The app maps the Samsung `KEY_*` codes
+that the UI and presets store to these names (`SonyPayloads.commandName`). After about 10 minutes idle
+some models drop the first IRCC silently, so the client sends an empty IRCC first.
+
+### 11.5 Read-only probe of the KD-49X755F (Android TV, 2018, 29/10/2026)
+
+- SSDP answers with `/sony/webapi/ssdp/dd.xml`; `getInterfaceInformation` reports interfaceVersion 5.4.0.
+- Without auth: `getPowerStatus` = `active`, `getRemoteControllerInfo` returns 150+ commands,
+  `getCurrentExternalInputsStatus` and `getVolumeInformation` work.
+- `getSystemInformation`, `getWolMode`, `getApplicationList` and `getNetworkSettings` answer 403.
+- PIN pairing, IRCC, app launch, text and power are not tested live yet.
+
+## 12. LG webOS (SSAP over WebSocket, port 3001)
+
+Reference implementation: aiowebostv 0.10.0 (Home Assistant `webostv`).
+
+### 12.1 Sockets [C]
+
+- Main: `wss://<ip>:3001/` (self-signed cert, CN "LGE TV SSG"). `ws://:3000` resets the
+  connection on the 2023 model [V], so the app uses wss only.
+- Status: `GET https://<ip>:3001/` answers `Hello world` while the TV is on [V]. There is no
+  unauthenticated standby state: off = no answer.
+- Buttons: `ssap://com.webos.service.networkinput/getPointerInputSocket` returns `socketPath`;
+  open it and send text frames `type:button\nname:<NAME>\n\n`.
+
+### 12.2 Pairing [C]
+
+Send `{"type":"register","id":"register_0","payload":{"pairingType":"PROMPT","manifest":{...permissions},"client-key"?}}`.
+Without a key: a `response` with `pairingType: PROMPT` arrives, the TV shows an accept prompt, and
+after OK a `registered` message carries `client-key`. With the saved key, `registered` arrives at once.
+`error` = refused.
+
+### 12.3 Requests [C]
+
+`{"id":"<n>","type":"request","uri":"ssap://<uri>","payload":{...}}`; the reply has the same id.
+
+| URI | Use |
+|---|---|
+| com.webos.applicationManager/listLaunchPoints | apps (`title`, `id`) |
+| system.launcher/launch `{"id"}` | launch an app |
+| com.webos.service.ime/insertText `{"text","replace"}` | text [?: replace semantics] |
+| com.webos.service.ime/sendEnterKey | submit |
+| system/turnOff | real off (reply not awaited) |
+| system/turnOn | only while the socket is up |
+
+Wake from off: Wake-on-LAN, with "Ligar via Wi-Fi" / "Quick Start+" on in the TV menu.
+
+### 12.4 Read-only probe of the 43UR7800PSA (webOS, 2023, 29/10/2026)
+
+- SSDP: `WebOS/4.1.0 UPnP/1.0`, friendlyName and modelName in the UPnP description (ports change per boot).
+- Ports 3000 and 3001 open; 3000 resets plain HTTP; 3001 answers `Hello world`.
+- Not on the network while off (no network standby enabled).
+- Pairing, buttons, apps, text and power are not tested live yet.
+- 29/10/2026, iOS simulator: discovery found the LG through `GET https://:3001/` ("Hello world") [V].
+
 ## Resultados do teste ao vivo (Frame 43" QN43LS03D, 2024, 29/10/2026)
 
 | Item | Resultado |
@@ -794,3 +888,23 @@ Reset Smart Hub, App Delete, or DNS.
 | Wake-on-LAN (cabo) | Não acordou em 30 s. |
 | `KEY_POWER` Click em standby | **Liga a TV** (~6 s). O app tenta isto antes do WOL. |
 | IDs confirmados | Netflix 3201907018807, YouTube 111299001912, Prime 3201910019365, Disney+ 3201901017640, HBO Max 3202301029760, Spotify 3201606009684, Apple TV 3201807016597, Browser 3202010022079. Globoplay 3201908019022 = 404. |
+
+### iPhone (simulador iOS 27, 29/10/2026)
+
+| Teste | Resultado |
+|---|---|
+| Adicionar a Frame 43" por IP (REST 8001) | OK, status "Ligada" pelo polling |
+| Volume pelo app de iPhone (canal remoto wss 8002) | OK (confirmado pelo usuário) |
+| Busca na rede com probe de 0,8 s e 3 marcas em série | Falhou: todos os probes estouraram o tempo |
+| Busca com 1,5 s e as 3 marcas em paralelo por host | OK: Frame 43", Frame 32" e LG (a Sony estava desligada) |
+| Teclado `.decimalPad` em pt-BR | Mostra vírgula e não ponto; trocado por `.numbersAndPunctuation` |
+
+### Pareamento repetido (Frame 43", 29/10/2026, log estruturado)
+
+| Passo | Resultado |
+|---|---|
+| Antes: Mac e iPhone como "Big Remote" | Tokens diferentes entre os dois aparelhos; o canal Arte do iPhone falhava a cada ~2–15 s com "pareamento expirou" (`ms.channel.timeOut`) |
+| Depois: "Big Remote (iPhone)" | Prompt aceito, token próprio, canal remoto e Arte OK |
+| Depois: "Big Remote (Mac)" | Prompt aceito, token próprio (guardado em `TokenStore.samsungKey`), canal remoto e Arte OK |
+Os valores dos tokens e as impressões digitais não entram no repositório: são segredos de 8 dígitos.
+

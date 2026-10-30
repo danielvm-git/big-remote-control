@@ -1,11 +1,11 @@
 // story: e04s01 e04s02
-import AppKit
 import Foundation
 
 /// Power, wake and Frame Art Mode actions.
 extension AppModel {
     func power(_ action: PowerAction) {
         guard let tv = selectedTV else { return show(TVError.noTVSelected.localizedDescription) }
+        Log.info(.power, "power.tapped", tv: tv.id, ["action": "\(action)"])
         run { try await self.setPower(action, on: tv) }
     }
 
@@ -23,7 +23,7 @@ extension AppModel {
             if let st = smartThingsClient(), let deviceID = tv.smartThingsDeviceID {
                 try await st.send(deviceID: deviceID, capability: "switch", command: "off")
             } else if tv.isFrame {
-                try await client.setArtMode(true)
+                try await samsungClient(for: tv).setArtMode(true)
                 show("Sem SmartThings, a The Frame só vai para o Modo Arte. Para desligar de verdade, configure o SmartThings.")
                 return
             } else {
@@ -45,11 +45,11 @@ extension AppModel {
                 return
             }
             do {
-                try await client.setArtMode(wantArt)
+                try await samsungClient(for: tv).setArtMode(wantArt)
             } catch {
                 // The art service can lag right after wake-up; retry once.
                 try await Task.sleep(for: .seconds(2))
-                try await client.setArtMode(wantArt)
+                try await samsungClient(for: tv).setArtMode(wantArt)
             }
         }
     }
@@ -90,10 +90,11 @@ extension AppModel {
         guard sentSomething else { throw wolError ?? TVError.noMAC }
     }
 
-    /// True when the KEY_POWER click went out to a TV that REST reports in standby.
+    /// True when the wake command (Samsung KEY_POWER, Sony setPowerStatus)
+    /// went out to a TV that REST reports in standby.
     private func sendPowerKeyIfStandby(_ tv: TVDevice) async -> Bool {
         guard let info = await refresh(tv), !info.isOn else { return false }
-        return (try? await client(for: tv).sendKey(RemoteKey.power.rawValue)) != nil
+        return (try? await client(for: tv).wakeFromStandby()) != nil
     }
 
     private func waitUntilOn(_ tv: TVDevice) async throws {
@@ -105,7 +106,11 @@ extension AppModel {
                 return
             }
         }
-        throw TVError.wakeFailed
+        switch tv.vendor {
+        case .samsung: throw TVError.wakeFailed
+        case .sony: throw TVError.sonyWakeFailed
+        case .lg: throw TVError.lgWakeFailed
+        }
     }
 
     func setArtMode(_ on: Bool) {
@@ -114,23 +119,23 @@ extension AppModel {
             if on {
                 try await self.setPower(.art, on: tv)
             } else {
-                try await self.client(for: tv).setArtMode(false)
+                try await self.samsungClient(for: tv).setArtMode(false)
             }
         }
     }
 
     func refreshArtMode() {
         guard let tv = selectedTV else { return }
-        run { try await self.client(for: tv).artModeStatus() }
+        run { try await self.samsungClient(for: tv).artModeStatus() }
     }
 
     func setArtBrightness(_ value: Int) {
         guard let tv = selectedTV else { return }
-        run { try await self.client(for: tv).setArtBrightness(value) }
+        run { try await self.samsungClient(for: tv).setArtBrightness(value) }
     }
 
     func setMotionTimer(_ value: String) {
         guard let tv = selectedTV else { return }
-        run { try await self.client(for: tv).setMotionTimer(value) }
+        run { try await self.samsungClient(for: tv).setMotionTimer(value) }
     }
 }

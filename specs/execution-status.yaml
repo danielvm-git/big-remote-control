@@ -20,3 +20,19 @@ development_status:
   e08: done
   e08s01: done
   e08s02: done
+  e09: in-progress     # Sony live test pending (user asked to wait)
+  e09s01: done
+  e09s02: review
+  e09s03: review
+  e09s04: review
+  e10: in-progress     # LG live test pending (user asked to wait)
+  e10s01: done
+  e10s02: review
+  e10s03: review
+  e11: in-progress     # upload waits for Xcode sign-in and the App Store Connect record
+  e11s01: review      # simulator: add, poll, volume and discovery verified
+  e11s02: in-progress
+  e12: review          # log verified on Mac, iPhone and simulator; per-device names re-paired
+  e12s01: done
+  e12s02: review
+  e12s03: review

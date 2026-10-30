@@ -31,6 +31,18 @@ in_scope:
   - id: fr-08
     title: Repository follows bigpowers conventions with CI/CD and automated releases
     epic: e08
+  - id: fr-09
+    title: Sony BRAVIA TVs on the LAN work with the same remote, apps, text and power controls
+    epic: e09
+  - id: fr-10
+    title: LG webOS TVs on the LAN work with the same remote, apps, text and power controls
+    epic: e10
+  - id: fr-11
+    title: An optional iPhone app (TestFlight) controls the same TVs over the LAN, without the Mac
+    epic: e11
+  - id: fr-12
+    title: The apps keep a structured, secret-free log of pairing, connections and commands that can be read from the Mac
+    epic: e12
 
 out_of_scope:
   - Phone-based control or phone as a camera.

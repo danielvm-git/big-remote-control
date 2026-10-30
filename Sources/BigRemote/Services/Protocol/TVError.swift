@@ -21,6 +21,18 @@ enum TVError: LocalizedError, Sendable, Equatable {
     case smartThingsUnavailable
     case smartThings(String)
     case noTVSelected
+    /// Sony JSON-RPC `error` [code, message].
+    case sony(Int, String)
+    /// Sony answered 401/403: the `auth` cookie is missing or expired.
+    case sonyAuthRequired
+    case sonyNeedsPIN
+    case sonyPINRejected
+    case invalidPIN
+    case sonyWakeFailed
+    case keyUnsupported(String)
+    /// LG SSAP `error` text.
+    case webOS(String)
+    case lgWakeFailed
 
     var errorDescription: String? {
         switch self {
@@ -46,6 +58,18 @@ enum TVError: LocalizedError, Sendable, Equatable {
         case .smartThingsUnavailable: return "SmartThings não configurado para esta TV."
         case .smartThings(let message): return "SmartThings: \(message)"
         case .noTVSelected: return "Nenhuma TV selecionada."
+        case .sony(let code, let message): return "A Sony retornou erro \(code): \(message)"
+        case .sonyAuthRequired: return "A Sony pediu autenticação. Pareie de novo."
+        case .sonyNeedsPIN: return "Pareie a Sony: toque em “Pedir PIN” e digite o código que aparece na TV."
+        case .sonyPINRejected: return "A Sony recusou o PIN. Peça um PIN novo e digite o código da TV."
+        case .invalidPIN: return "O PIN tem 4 dígitos."
+        case .sonyWakeFailed:
+            return "A TV não ligou. Na Sony, ative Configurações > Rede > “Ligar remotamente” (Remote start)."
+        case .keyUnsupported(let key): return "A tecla \(key) não existe nesta TV."
+        case .webOS(let message): return "A LG respondeu: \(message)"
+        case .lgWakeFailed:
+            return "A TV não ligou. Na LG, ative Configurações > Geral > Dispositivos > TV > “Ligar via Wi-Fi” "
+                + "(ou “Quick Start+”) e informe o MAC."
         }
     }
 }

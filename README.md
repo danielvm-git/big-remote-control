@@ -1,6 +1,6 @@
 ## Big Remote
 
-Big Remote — controle remoto nativo para macOS (barra de menus) para TVs Samsung Tizen, com foco na The Frame. O Mac fala direto com a TV pela rede local: sem celular e sem nuvem obrigatória.
+Big Remote — controle remoto nativo para macOS (barra de menus) para TVs Samsung Tizen, com foco na The Frame, e TVs Sony BRAVIA e LG webOS. O Mac fala direto com a TV pela rede local: sem celular e sem nuvem obrigatória.
 
 ## Motivação
 
@@ -100,6 +100,16 @@ open "build/Build/Products/Debug/Big Remote.app"
 - O certificado autoassinado da TV (WSS 8002) só é aceito para IPs privados (10/8, 172.16/12, 192.168/16).
 
 ---
+
+### iPhone (TestFlight)
+
+O app de iPhone usa os mesmos clientes de TV do Mac e fala direto com a TV pela rede local. Ele é opcional: o Mac nunca depende dele.
+
+1. Entre com a sua Apple ID em Xcode > Settings > Accounts.
+2. Crie o app em App Store Connect com o bundle ID `com.danielvm.BigRemoteiOS`.
+3. Rode `TEAM_ID=<seu team ID> bash scripts/testflight.sh`.
+
+No iPhone, cada TV é pareada de novo e o MAC (Wake-on-LAN) é digitado à mão. O iOS bloqueia broadcast UDP, então ligar por Wake-on-LAN pelo iPhone pode falhar (ADR 0006).
 
 ## Referência do protocolo
 

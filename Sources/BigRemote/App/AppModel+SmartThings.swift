@@ -1,5 +1,4 @@
 // story: e06s01
-import AppKit
 import Foundation
 
 /// Optional SmartThings cloud integration.

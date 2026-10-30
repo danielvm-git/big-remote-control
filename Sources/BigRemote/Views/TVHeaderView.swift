@@ -10,7 +10,7 @@ struct TVHeaderView: View {
             header
             if model.localNetworkBlocked {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Sem acesso à rede local. Permita Rede Local em Ajustes do Sistema > Privacidade e Segurança > Rede Local.")
+                    Text(Self.localNetworkHint)
                         .font(.caption)
                     Button("Abrir Ajustes de Rede Local") { model.openLocalNetworkSettings() }
                         .controlSize(.small)
@@ -21,6 +21,12 @@ struct TVHeaderView: View {
             }
         }
     }
+
+    #if os(macOS)
+    static let localNetworkHint = "Sem acesso à rede local. Permita Rede Local em Ajustes do Sistema > Privacidade e Segurança > Rede Local."
+    #else
+    static let localNetworkHint = "Sem acesso à rede local. Ative Rede Local em Ajustes > Big Remote."
+    #endif
 
     private var header: some View {
         @Bindable var model = model

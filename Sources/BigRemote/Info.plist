@@ -34,6 +34,6 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Daniel VM</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>O Big Remote controla as TVs Samsung da sua rede local (controle remoto, Modo Arte e Wake-on-LAN).</string>
+	<string>O Big Remote controla as TVs Samsung, Sony e LG da sua rede local (controle remoto, Modo Arte e Wake-on-LAN).</string>
 </dict>
 </plist>

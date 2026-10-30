@@ -2,7 +2,8 @@
 import Darwin
 import Foundation
 
-/// Finds TVs by probing `GET :8001/api/v2/` on every host of the local /24s.
+/// Finds TVs by probing every host of the local /24s: Samsung `GET :8001/api/v2/`,
+/// then Sony `POST :80/sony/system getPowerStatus`, then LG `GET https://:3001/`.
 enum TVDiscovery {
     /// Private IPv4 addresses of the Mac's active interfaces.
     static func localIPv4Addresses() -> [String] {
@@ -27,7 +28,23 @@ enum TVDiscovery {
     }
 
     /// Probes all /24 hosts concurrently (short timeouts, bounded width).
-    static func scan(rest: TVRESTClient = TVRESTClient(), timeout: TimeInterval = 0.8, width: Int = 48) async -> [DeviceInfo] {
+    static func scan(
+        rest: TVRESTClient = TVRESTClient(),
+        sony: SonyRESTClient = SonyRESTClient(),
+        lg: LGRESTClient = LGRESTClient(),
+        timeout: TimeInterval = 1.5,
+        width: Int = 32
+    ) async -> [DeviceInfo] {
+        // The three brands are probed at once, so a host costs one timeout, not three.
+        // 0.8 s was too short under load on the iOS simulator (every probe timed out).
+        @Sendable func probe(_ host: String) async -> DeviceInfo? {
+            async let samsung = rest.deviceInfo(ip: host, timeout: timeout)
+            async let bravia = sony.fetchDeviceInfo(ip: host, timeout: timeout).info
+            async let webOS = lg.fetchDeviceInfo(ip: host, timeout: timeout).info
+            if let info = await samsung, info.isSamsungTV { return info }
+            if let info = await bravia { return info }
+            return await webOS
+        }
         var hosts: [String] = []
         for local in localIPv4Addresses() {
             for host in NetworkAddress.hosts24(around: local) where host != local && !hosts.contains(host) {
@@ -39,12 +56,12 @@ enum TVDiscovery {
             var iterator = hosts.makeIterator()
             for _ in 0..<width {
                 guard let host = iterator.next() else { break }
-                group.addTask { await rest.deviceInfo(ip: host, timeout: timeout) }
+                group.addTask { await probe(host) }
             }
             while let result = await group.next() {
-                if let info = result, info.isSamsungTV { found.append(info) }
+                if let info = result { found.append(info) }
                 if let host = iterator.next() {
-                    group.addTask { await rest.deviceInfo(ip: host, timeout: timeout) }
+                    group.addTask { await probe(host) }
                 }
             }
         }

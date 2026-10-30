@@ -1,6 +1,6 @@
 import Foundation
 
-/// Decoded `GET http://<ip>:8001/api/v2/`.
+/// Decoded `GET http://<ip>:8001/api/v2/` (Sony: see `SonyPayloads.deviceInfo`).
 /// All flags are strings ("true"/"false"); `isSupport` is JSON inside JSON.
 struct DeviceInfo: Sendable, Hashable {
     var ip: String
@@ -19,6 +19,7 @@ struct DeviceInfo: Sendable, Hashable {
     var apiVersion: String?
     var isSamsungTV: Bool
     var support: [String: String]
+    var brand: TVBrand = .samsung
 
     /// No PowerState field means an older TV that only answers when on.
     var isOn: Bool {

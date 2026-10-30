@@ -19,11 +19,12 @@ extension SamsungTVClient {
     private func openArt() async throws {
         // 2024 Frames show no Allow prompt on the art channel:
         // pair on the remote channel first and reuse that token.
-        if tokens.token(for: tvID) == nil { try await ensureRemote() }
-        let token = tokens.token(for: tvID)
+        if tokens.token(for: tokenKey) == nil { try await ensureRemote() }
+        let token = tokens.token(for: tokenKey)
         guard let url = RemotePayloads.channelURL(ip: ip, channel: .art, token: token) else {
             throw TVError.invalidAddress
         }
+        Log.info(.link, "art.connect.start", tv: tvID, ["tokenFingerprint": Log.fingerprint(token)])
         do {
             let newToken = try await art.connect(
                 url: url,
@@ -32,10 +33,16 @@ extension SamsungTVClient {
                 onEvent: { [weak self] event in await self?.handleArtEvent(event) },
                 onClose: { [weak self] in await self?.artClosed() }
             )
-            if token == nil, let newToken { tokens.setToken(newToken, for: tvID) }
+            Log.info(.link, "art.connect.ok", tv: tvID, ["tokenReceived": Log.fingerprint(newToken)])
+            if token == nil, let newToken { tokens.setToken(newToken, for: tokenKey) }
+            artAutoPaused = false
         } catch is CancellationError {
             throw CancellationError()
         } catch {
+            Log.warning(.link, "art.connect.failed", tv: tvID, [
+                "error": error.localizedDescription, "monitoring": "paused until the next good connect or Parear",
+            ])
+            artAutoPaused = true
             await registerArtMiss()
             throw error
         }
@@ -213,11 +220,12 @@ extension SamsungTVClient {
     /// only when a token exists (no surprise Allow popup) and keeps it open
     /// to receive `art_mode_changed` pushes.
     func startArtMonitoring() async {
-        guard isFrame, tokens.token(for: tvID) != nil else { return }
+        guard isFrame, !artAutoPaused, tokens.token(for: tokenKey) != nil else { return }
         if let until = artBlockedUntil, ContinuousClock.now < until { return }
         if await art.isOpen { return }
         _ = try? await artModeStatus()
-        if !askedArtVersion {
+        // A failed open just paused monitoring: do not try again right away.
+        if !askedArtVersion, !artAutoPaused {
             askedArtVersion = true
             _ = try? await artAPIVersion()
         }

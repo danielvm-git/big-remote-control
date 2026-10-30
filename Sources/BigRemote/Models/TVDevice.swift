@@ -15,6 +15,10 @@ struct TVDevice: Codable, Identifiable, Hashable, Sendable {
     var duid: String?
     /// Optional SmartThings device id mapped to this TV.
     var smartThingsDeviceID: String?
+    /// nil = saved before Sony support, so Samsung.
+    var brand: TVBrand?
+
+    var vendor: TVBrand { brand ?? .samsung }
 
     init(
         id: String,
@@ -25,7 +29,8 @@ struct TVDevice: Codable, Identifiable, Hashable, Sendable {
         isFrame: Bool = false,
         networkType: String? = nil,
         duid: String? = nil,
-        smartThingsDeviceID: String? = nil
+        smartThingsDeviceID: String? = nil,
+        brand: TVBrand? = nil
     ) {
         self.id = id
         self.name = name
@@ -36,6 +41,7 @@ struct TVDevice: Codable, Identifiable, Hashable, Sendable {
         self.networkType = networkType
         self.duid = duid
         self.smartThingsDeviceID = smartThingsDeviceID
+        self.brand = brand
     }
 
     /// Builds a new TV entry from the REST device info.
@@ -48,7 +54,8 @@ struct TVDevice: Codable, Identifiable, Hashable, Sendable {
             modelName: info.modelName,
             isFrame: info.isFrame,
             networkType: info.networkType,
-            duid: info.duid
+            duid: info.duid,
+            brand: info.brand
         )
     }
 }

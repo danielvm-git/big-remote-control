@@ -1,5 +1,7 @@
 // story: e05s01
+#if os(macOS)
 import AppKit
+#endif
 import Foundation
 
 /// Running and managing presets.
@@ -7,6 +9,7 @@ extension AppModel {
     func runPreset(_ preset: Preset) {
         guard runningPresetID == nil else { return show("Já existe um preset rodando.") }
         runningPresetID = preset.id
+        Log.info(.command, "preset.run", ["name": preset.name, "steps": "\(preset.steps.count)"])
         Task {
             var problems: [String] = []
             for step in preset.steps {
@@ -90,7 +93,7 @@ extension AppModel {
             if step.on ?? true {
                 try await setPower(.art, on: tv)
             } else {
-                try await client.setArtMode(false)
+                try await samsungClient(for: tv).setArtMode(false)
             }
         case .power:
             try await setPower(step.power ?? .tv, on: tv)
@@ -110,9 +113,15 @@ extension AppModel {
     }
 
     /// Catalogue apps resolve to the ID installed on this TV; raw IDs go as typed.
-    private func runLaunchStep(_ step: PresetStep, on tv: TVDevice, client: SamsungTVClient) async throws {
+    private func runLaunchStep(_ step: PresetStep, on tv: TVDevice, client: any TVController) async throws {
         var appID = step.appID ?? ""
         let known = TVApp.find(appID, in: customApps)
+        if let named = client as? any NamedAppLauncher {
+            // Catalogue apps match by title; anything else is the TV's own id.
+            if let known { try await named.launchApp(named: known.name) } else { try await named.launch(id: appID) }
+            return
+        }
+        guard let client = client as? SamsungTVClient else { return }
         let type = step.launchType ?? known?.launchType ?? .deepLink
         if let known, known.appID == appID {
             appID = try await resolveAppID(known, on: tv)
@@ -120,10 +129,12 @@ extension AppModel {
         try await client.launchApp(appID, type: type)
     }
 
+    #if os(macOS)
     func revealPresetsFile() {
         presetStore.save(presets)
         NSWorkspace.shared.activateFileViewerSelecting([PresetStore.fileURL])
     }
+    #endif
 
     func restoreExamplePresets() {
         let existing = Set(presets.map(\.name))

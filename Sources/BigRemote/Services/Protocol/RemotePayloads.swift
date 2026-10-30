@@ -13,8 +13,14 @@ enum KeyCommand: String, Sendable {
 
 /// JSON payloads for the `samsung.remote.control` channel (docs 2-4).
 enum RemotePayloads {
-    /// Keep constant: the TV binds the token to the client name.
-    static let clientName = "Big Remote"
+    /// One name per platform. The TV binds a token to the client name, so a Mac and an
+    /// iPhone sharing one name kept invalidating each other's token (ADR 0008).
+    /// Changing a name means pairing again: the token key includes it (`TokenStore.samsungKey`).
+    #if os(iOS)
+    static let clientName = "Big Remote (iPhone)"
+    #else
+    static let clientName = "Big Remote (Mac)"
+    #endif
 
     /// Standard base64 of the UTF-8 name, percent-encoded for a query value.
     static func encodedName(_ name: String) -> String {

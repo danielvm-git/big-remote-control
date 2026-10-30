@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import Observation
 
@@ -38,7 +37,9 @@ final class AppModel {
     @ObservationIgnored let presetStore = PresetStore()
     @ObservationIgnored let keychain = KeychainStore()
     @ObservationIgnored let rest = TVRESTClient()
-    @ObservationIgnored var clients: [String: SamsungTVClient] = [:]
+    @ObservationIgnored let sonyREST = SonyRESTClient()
+    @ObservationIgnored let lgREST = LGRESTClient()
+    @ObservationIgnored var clients: [String: any TVController] = [:]
     @ObservationIgnored var pollTask: Task<Void, Never>?
     @ObservationIgnored var bannerTask: Task<Void, Never>?
     @ObservationIgnored var smartThingsToken: String?
@@ -63,6 +64,13 @@ final class AppModel {
         smartThingsConfigured = settings.smartThingsConfigured
         let stored = settings.selectedTVID
         selectedTVID = settings.tvs.contains { $0.id == stored } ? stored : settings.tvs.first?.id
+        let info = Bundle.main.infoDictionary
+        Log.info(.app, "app.start", [
+            "version": info?["CFBundleShortVersionString"] as? String ?? "?",
+            "build": info?["CFBundleVersion"] as? String ?? "?",
+            "platform": Log.device,
+            "tvs": settings.tvs.map { "\($0.id)=\($0.vendor.rawValue)" }.joined(separator: ","),
+        ])
         syncClients()
         startPolling()
     }
@@ -94,8 +102,13 @@ final class AppModel {
                 }
             } else {
                 let id = tv.id
-                clients[tv.id] = SamsungTVClient(tv: tv) { [weak self] update in
+                let onUpdate: @Sendable (TVClientUpdate) -> Void = { [weak self] update in
                     Task { @MainActor in self?.apply(update, to: id) }
+                }
+                switch tv.vendor {
+                case .samsung: clients[tv.id] = SamsungTVClient(tv: tv, onUpdate: onUpdate)
+                case .sony: clients[tv.id] = SonyTVClient(tv: tv, onUpdate: onUpdate)
+                case .lg: clients[tv.id] = LGTVClient(tv: tv, onUpdate: onUpdate)
                 }
             }
         }
@@ -112,7 +125,7 @@ final class AppModel {
     }
 
     /// Throws when the TV was removed (e.g. during a wake wait or a preset).
-    func client(for tv: TVDevice) throws -> SamsungTVClient {
+    func client(for tv: TVDevice) throws -> any TVController {
         guard let client = clients[tv.id] else { throw TVError.noTVSelected }
         return client
     }
@@ -121,7 +134,9 @@ final class AppModel {
         guard tvs.contains(where: { $0.id == id }) else { return }
         var status = statuses[id] ?? TVStatus()
         switch update {
-        case .link(let link): status.link = link
+        case .link(let link):
+            if status.link != link { Log.info(.link, "link.changed", tv: id, ["from": status.link.label, "to": link.label]) }
+            status.link = link
         case .artMode(let mode): status.artMode = mode
         case .goingToStandby:
             status.artMode = nil
@@ -132,105 +147,10 @@ final class AppModel {
         statuses[id] = status
     }
 
-    // MARK: - Polling (read-only REST, every 7 s)
-
-    private func startPolling() {
-        pollTask = Task { [weak self] in
-            while !Task.isCancelled {
-                await self?.pollAll()
-                try? await Task.sleep(for: .seconds(7))
-            }
-        }
-    }
-
-    func pollAll() async {
-        let targets = tvs.map { ($0.id, $0.ip) }
-        let rest = self.rest
-        let results = await withTaskGroup(of: (String, TVRESTClient.InfoResult).self) { group in
-            for (id, ip) in targets {
-                group.addTask { (id, await rest.fetchDeviceInfo(ip: ip)) }
-            }
-            var collected: [(String, TVRESTClient.InfoResult)] = []
-            for await result in group { collected.append(result) }
-            return collected
-        }
-        for (id, result) in results { applyInfo(result.info, to: id) }
-        updateLocalNetworkHint(results.map(\.1))
-    }
-
-    /// All TVs failed with a "local network prohibited" style error while
-    /// the Mac has a private IPv4 address: the permission is the likely cause.
-    private func updateLocalNetworkHint(_ results: [TVRESTClient.InfoResult]) {
-        guard !results.isEmpty else { localNetworkBlocked = false; return }
-        let allDenied = results.allSatisfy { $0.looksLikeLocalNetworkDenied }
-        let blocked = allDenied && !TVDiscovery.localIPv4Addresses().isEmpty
-        if blocked != localNetworkBlocked { localNetworkBlocked = blocked }
-    }
-
-    func openLocalNetworkSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork") {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
-    @discardableResult
-    func refresh(_ tv: TVDevice) async -> DeviceInfo? {
-        let info = await rest.deviceInfo(ip: tv.ip)
-        applyInfo(info, to: tv.id)
-        return info
-    }
-
-    private func applyInfo(_ info: DeviceInfo?, to id: String) {
-        guard tvs.contains(where: { $0.id == id }) else { return }
-        guard let info else { return markUnreachable(id) }
-        missedPolls[id] = 0
-        var status = statuses[id] ?? TVStatus()
-        if !info.isOn, status.reachability != .standby, !busyTVIDs.contains(id), let client = clients[id] {
-            // Standby: the sockets are dead even if no close arrived.
-            Task { await client.disconnectAll() }
-        }
-        status.info = info
-        status.lastSeen = Date()
-        status.reachability = info.isOn ? .on : .standby
-        if !info.isOn { status.artMode = nil }
-        statuses[id] = status
-        fillMissingDetails(of: id, from: info)
-        if info.isOn, let tv = tvs.first(where: { $0.id == id }), tv.isFrame, let client = clients[tv.id] {
-            Task { await client.startArtMonitoring() }
-        }
-    }
-
-    private func markUnreachable(_ id: String) {
-        var status = statuses[id] ?? TVStatus()
-        status.reachability = .unreachable
-        status.artMode = nil
-        statuses[id] = status
-        // No TCP FIN when a TV drops off Wi-Fi: after two silent polls
-        // (~14 s) close the sockets so the next command reconnects.
-        let misses = (missedPolls[id] ?? 0) + 1
-        missedPolls[id] = misses
-        if misses == 2, !busyTVIDs.contains(id), let client = clients[id] {
-            Task { await client.disconnectAll() }
-        }
-    }
-
-    /// Copies model, DUID, network type, Frame flag and MAC from the device info.
-    private func fillMissingDetails(of id: String, from info: DeviceInfo) {
-        guard let index = tvs.firstIndex(where: { $0.id == id }) else { return }
-        var tv = tvs[index]
-        if tv.duid == nil { tv.duid = info.duid }
-        if tv.modelName == nil { tv.modelName = info.modelName }
-        if tv.networkType != info.networkType, info.networkType != nil { tv.networkType = info.networkType }
-        if info.isFrame { tv.isFrame = true }
-        if tv.mac == nil {
-            tv.mac = info.isWired ? ARPTable.mac(for: tv.ip) : info.wifiMac?.uppercased()
-        }
-        if tv != tvs[index] { tvs[index] = tv }
-    }
-
     // MARK: - Feedback
 
     func show(_ message: String) {
+        Log.info(.app, "banner", ["text": message])
         banner = message
         bannerTask?.cancel()
         bannerTask = Task { [weak self] in
@@ -246,6 +166,7 @@ final class AppModel {
                 try await operation()
             } catch is CancellationError {
             } catch {
+                Log.error(.command, "action.error", ["error": error.localizedDescription])
                 self.show(error.localizedDescription)
             }
         }
@@ -254,6 +175,22 @@ final class AppModel {
     func requireTV() throws -> TVDevice {
         guard let tv = selectedTV else { throw TVError.noTVSelected }
         return tv
+    }
+
+    /// Art Mode and Samsung app IDs exist only on the Samsung client.
+    func samsungClient(for tv: TVDevice) throws -> SamsungTVClient {
+        guard let client = try client(for: tv) as? SamsungTVClient else { throw TVError.notFrame }
+        return client
+    }
+
+    func sonyClient(for tv: TVDevice) throws -> SonyTVClient {
+        guard let client = try client(for: tv) as? SonyTVClient else { throw TVError.noTVSelected }
+        return client
+    }
+
+    /// Sony and LG: apps launch by title.
+    func namedAppClient(for tv: TVDevice) throws -> (any NamedAppLauncher)? {
+        try client(for: tv) as? any NamedAppLauncher
     }
 
 }

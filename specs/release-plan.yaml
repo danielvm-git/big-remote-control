@@ -14,6 +14,10 @@ build_order:
   - e05
   - e06
   - e08
+  - e09
+  - e10
+  - e11
+  - e12
 epics:
   - id: e01
     title: LAN remote control
@@ -60,3 +64,31 @@ epics:
     stories:
       - {id: e08s01, title: bigpowers conventions, specs and lint gate, bcps: 3}
       - {id: e08s02, title: CI/CD from the .github template with big-release, bcps: 3}
+  - id: e09
+    title: Sony BRAVIA support
+    wsjf: 12
+    stories:
+      - {id: e09s01, title: Sony wire formats (JSON-RPC, IRCC, key map, app match), bcps: 3}
+      - {id: e09s02, title: PIN pairing with cookie renewal, bcps: 3}
+      - {id: e09s03, title: Keys, apps, text and power on a Sony TV, bcps: 3}
+      - {id: e09s04, title: Discover and add Sony TVs, bcps: 2}
+  - id: e10
+    title: LG webOS support
+    wsjf: 11
+    stories:
+      - {id: e10s01, title: webOS wire formats (register, SSAP request, buttons, app list), bcps: 3}
+      - {id: e10s02, title: Prompt pairing with saved client-key and pointer socket, bcps: 3}
+      - {id: e10s03, title: Keys, apps, text, power and discovery on an LG TV, bcps: 3}
+  - id: e11
+    title: iPhone app on TestFlight
+    wsjf: 10
+    stories:
+      - {id: e11s01, title: iOS target sharing AppModel and TV clients with touch screens, bcps: 5}
+      - {id: e11s02, title: Signing, archive and TestFlight upload script, bcps: 2}
+  - id: e12
+    title: Observability
+    wsjf: 16
+    stories:
+      - {id: e12s01, title: Structured JSON log with redaction, rotation and tests, bcps: 3}
+      - {id: e12s02, title: Instrument pairing, connections and commands; scripts/logs.sh, bcps: 3}
+      - {id: e12s03, title: Diagnóstico section to view and share the log on Mac and iPhone, bcps: 2}

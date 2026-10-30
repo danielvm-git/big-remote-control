@@ -6,6 +6,16 @@ import Foundation
 /// Ethernet. Best effort: returns nil if the entry is missing.
 enum ARPTable {
     static func mac(for ip: String) -> String? {
+        #if os(macOS)
+        return macFromRoutingTable(ip)
+        #else
+        // The routing sysctl is not available to iOS apps: the user types the MAC.
+        return nil
+        #endif
+    }
+
+    #if os(macOS)
+    private static func macFromRoutingTable(_ ip: String) -> String? {
         guard let target = NetworkAddress.ipv4Octets(ip) else { return nil }
         // CTL_NET, PF_ROUTE, 0, AF_INET, NET_RT_FLAGS (2), RTF_LLINFO (0x400)
         var mib: [Int32] = [CTL_NET, PF_ROUTE, 0, AF_INET, 2, 0x400]
@@ -40,4 +50,5 @@ enum ARPTable {
         }
         return nil
     }
+    #endif
 }
